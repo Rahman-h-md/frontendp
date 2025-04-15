@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AR Anatomy Learning Tool</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            padding-top: 40px;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .dashboard-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #ar-viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1000;
+        }
+        
+        a-scene {
+            z-index: -1;
+        }
+        
+        .arjs-loader {
+            z-index: 999 !important;
+        }
+        
+        header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1100;
+            padding: 15px 30px;
+            margin-bottom: 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .anatomy-sections {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 50px 30px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+        }
+
+        .anatomy-sections h2 {
+            margin-bottom: 30px;
+            font-size: 26px;
+            color: #333;
+            text-align: center;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 400px));
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            justify-content: center;
+        }
+
+        .section-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            position: relative;
+        }
+
+        .section-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-card h3 {
+            font-size: 22px;
+            margin-bottom: 12px;
+            color: #2d3748;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .section-card p {
+            color: #718096;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* New Styles for tabs */
+        .dashboard-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 8px;
+            margin: 0 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        .tab-button.active {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            width: 100%;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Favorite button styles */
+        .favorite-btn {
+            position: relative;
+            top: auto;
+            right: auto;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 22px;
+            color: #cbd5e0;
+            transition: color 0.3s;
+            z-index: 5;
+            margin-left: 10px;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .favorite-btn:hover {
+            color: #f6ad55;
+        }
+        
+        .favorite-btn.active {
+            color: #f6993f;
+        }
+        
+        /* Empty favorites message */
+        .empty-favorites {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .empty-favorites i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+            color: #e2e8f0;
+        }
+        
+        /* Notes panel styles */
+        .notes-panel {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 1200;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .notes-panel.active {
+            right: 0;
+        }
+        
+        .notes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .notes-header h3 {
+            font-size: 20px;
+            margin: 0;
+        }
+        
+        .close-notes {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+        }
+        
+        .model-name {
+            color: #4a5568;
+            font-weight: 500;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        #notes-textarea {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            resize: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        
+        .notes-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .notes-save, .notes-cancel {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .notes-save {
+            background: #4299e1;
+            color: white;
+            border: none;
+        }
+        
+        .notes-save:hover {
+            background: #3182ce;
+        }
+        
+        .notes-cancel {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+        }
+        
+        .notes-cancel:hover {
+            background: #cbd5e0;
+        }
+        
+        /* Notes button on section cards */
+        .model-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        
+        .notes-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #4a5568;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .notes-btn i {
+            margin-right: 6px;
+        }
+        
+        .notes-btn:hover {
+            background: #cbd5e0;
+        }
+        
+        .notes-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #48bb78;
+            margin-left: 6px;
+        }
+
+        /* Styles for statistics tab */
+        .stats-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .stats-container h3 {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2d3748;
+        }
+
+        .stats-table-container {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .stats-table th,
+        .stats-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stats-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .stats-table tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .stats-table td:last-child {
+            text-align: center;
+        }
+
+        .loading-stats {
+            text-align: center !important;
+            padding: 20px;
+            color: #a0aec0;
+        }
+
+        .stats-model-name {
+            display: flex;
+            align-items: center;
+        }
+
+        .stats-model-name span {
+            margin-left: 10px;
+        }
+
+        .stats-view-count {
+            font-weight: 500;
+            background-color: #ebf4ff;
+            color: #4299e1;
+            border-radius: 20px;
+            padding: 3px 10px;
+            display: inline-block;
+        }
+
+        /* Light/Dark mode toggle */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            margin-left: 15px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+        
+        .theme-toggle i {
+            font-size: 18px;
+            color: #4a5568;
+            transition: all 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            background-color: rgba(66, 153, 225, 0.1);
+        }
+        
+        .theme-toggle:hover i {
+            color: #4299e1;
+        }
+        
+        /* Dark theme styles */
+        body.dark-theme {
+            background: #1a202c;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .dashboard-container {
+            background: #2d3748;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.dark-theme header {
+            background: #2d3748;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.dark-theme .anatomy-sections {
+            background: linear-gradient(to bottom, #2d3748, #1a202c);
+        }
+        
+        body.dark-theme .anatomy-sections h2,
+        body.dark-theme h1 {
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .section-card {
+            background: #4a5568;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        body.dark-theme .section-card h3 {
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .section-card p {
+            color: #cbd5e0;
+        }
+        
+        body.dark-theme .tab-button {
+            background: #4a5568;
+            color: #cbd5e0;
+        }
+        
+        body.dark-theme .tab-button.active {
+            background: #4299e1;
+            color: white;
+        }
+        
+        body.dark-theme .notes-btn,
+        body.dark-theme .notes-cancel {
+            background: #4a5568;
+            color: #cbd5e0;
+        }
+        
+        body.dark-theme .notes-btn:hover,
+        body.dark-theme .notes-cancel:hover {
+            background: #2d3748;
+        }
+        
+        body.dark-theme .notes-panel {
+            background: #2d3748;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.dark-theme .model-name {
+            color: #e2e8f0;
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        body.dark-theme #notes-textarea {
+            background: #4a5568;
+            border: 1px solid #2d3748;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .stats-table {
+            background: #4a5568;
+        }
+        
+        body.dark-theme .stats-table th {
+            background: #2d3748;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .stats-table td {
+            border-bottom: 1px solid #2d3748;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .nav-link {
+            color: #4299e1;
+        }
+
+        /* Rating styles */
+        .rating-container {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .rating-stars {
+            display: flex;
+            align-items: center;
+        }
+        
+        .rating-star {
+            color: #e2e8f0;
+            font-size: 18px;
+            cursor: pointer;
+            transition: color 0.2s;
+            margin: 0 2px;
+        }
+        
+        .rating-star:hover,
+        .rating-star.active {
+            color: #f6ad55;
+        }
+        
+        .rating-count {
+            margin-left: 8px;
+            font-size: 14px;
+            color: #718096;
+        }
+        
+        .model-rating-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .model-rating-modal.active {
+            display: flex;
+        }
+        
+        .rating-modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .rating-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .rating-modal-header h3 {
+            margin: 0;
+            font-size: 22px;
+        }
+        
+        .close-rating-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+        }
+        
+        .rating-modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .rating-stars-large {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .rating-star-large {
+            color: #e2e8f0;
+            font-size: 32px;
+            cursor: pointer;
+            transition: color 0.2s;
+            margin: 0 5px;
+        }
+        
+        .rating-star-large:hover,
+        .rating-star-large.active {
+            color: #f6ad55;
+        }
+        
+        .rating-comment {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Inter', sans-serif;
+            resize: none;
+            height: 100px;
+        }
+        
+        .rating-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .rating-submit, 
+        .rating-cancel {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .rating-submit {
+            background: #4299e1;
+            color: white;
+            border: none;
+        }
+        
+        .rating-submit:hover {
+            background: #3182ce;
+        }
+        
+        .rating-cancel {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+        }
+        
+        .rating-cancel:hover {
+            background: #cbd5e0;
+        }
+        
+        /* Dark theme adjustments for ratings */
+        body.dark-theme .rating-star {
+            color: #4a5568;
+        }
+        
+        body.dark-theme .rating-modal-content {
+            background: #2d3748;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .rating-comment {
+            background: #4a5568;
+            border: 1px solid #2d3748;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .rating-count {
+            color: #a0aec0;
+        }
+
+        /* Quiz styles */
+        .quiz-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .quiz-list {
+            margin-bottom: 30px;
+        }
+        
+        .quiz-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quiz-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .quiz-card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        
+        .quiz-card p {
+            color: #718096;
+            margin-bottom: 10px;
+        }
+        
+        .quiz-card .quiz-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #a0aec0;
+        }
+        
+        .quiz-score {
+            background: #ebf8ff;
+            color: #4299e1;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .quiz-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .quiz-modal.active {
+            display: block;
+        }
+        
+        .quiz-modal-content {
+            background: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 700px;
+            padding: 30px;
+            margin: 40px auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .quiz-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .quiz-modal-header h3 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close-quiz-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+        }
+        
+        .quiz-modal-body {
+            margin-bottom: 30px;
+        }
+        
+        .quiz-description {
+            margin-bottom: 25px;
+            color: #718096;
+        }
+        
+        .quiz-questions {
+            counter-reset: question;
+        }
+        
+        .quiz-question {
+            margin-bottom: 30px;
+            position: relative;
+            padding-left: 35px;
+        }
+        
+        .quiz-question::before {
+            counter-increment: question;
+            content: counter(question) ".";
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-weight: bold;
+            color: #4299e1;
+            font-size: 18px;
+        }
+        
+        .quiz-question h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #2d3748;
+        }
+        
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .quiz-option {
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .quiz-option:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+        
+        .quiz-option.selected {
+            background: #ebf8ff;
+            border-color: #4299e1;
+        }
+        
+        .quiz-option.correct {
+            background: #f0fff4;
+            border-color: #48bb78;
+        }
+        
+        .quiz-option.incorrect {
+            background: #fff5f5;
+            border-color: #e53e3e;
+        }
+        
+        .quiz-option-label {
+            margin-left: 10px;
+            flex: 1;
+        }
+        
+        .quiz-progress {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #718096;
+        }
+        
+        .quiz-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .quiz-next, 
+        .quiz-submit,
+        .quiz-restart {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quiz-next, .quiz-submit {
+            background: #4299e1;
+            color: white;
+            border: none;
+        }
+        
+        .quiz-next:hover, .quiz-submit:hover {
+            background: #3182ce;
+        }
+        
+        .quiz-restart {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+        }
+        
+        .quiz-restart:hover {
+            background: #cbd5e0;
+        }
+        
+        .quiz-results {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .quiz-results h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        
+        .quiz-results p {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .quiz-score-big {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4299e1;
+            margin: 10px 0;
+        }
+        
+        /* Dark theme adjustments for quiz */
+        body.dark-theme .quiz-card {
+            background: #4a5568;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.dark-theme .quiz-card h3 {
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .quiz-card p {
+            color: #cbd5e0;
+        }
+        
+        body.dark-theme .quiz-score {
+            background: #2d3748;
+        }
+        
+        body.dark-theme .quiz-modal-content {
+            background: #2d3748;
+        }
+        
+        body.dark-theme .quiz-modal-header {
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        body.dark-theme .quiz-description {
+            color: #a0aec0;
+        }
+        
+        body.dark-theme .quiz-question h4 {
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .quiz-option {
+            border-color: #4a5568;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .quiz-option:hover {
+            background: #4a5568;
+        }
+        
+        body.dark-theme .quiz-option.selected {
+            background: #2c5282;
+            border-color: #4299e1;
+        }
+        
+        body.dark-theme .quiz-option.correct {
+            background: #276749;
+            border-color: #48bb78;
+        }
+        
+        body.dark-theme .quiz-option.incorrect {
+            background: #9b2c2c;
+            border-color: #e53e3e;
+        }
+        
+        body.dark-theme .quiz-results {
+            background: #4a5568;
+        }
+        
+        body.dark-theme .quiz-restart {
+            background: #4a5568;
+            color: #e2e8f0;
+        }
+        
+        body.dark-theme .quiz-restart:hover {
+            background: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>AR Anatomy Learning Tool</h1>
+            <div class="user-info">
+                <span id="welcome-message"></span>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="#" onclick="logout()" class="nav-link">Logout</a>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </div>
+            </div>
+        </header>
+
+        <div class="anatomy-sections">
+            <h2>Anatomical Models</h2>
+            
+            <div class="dashboard-tabs">
+                <button class="tab-button active" data-tab="all-models">All Models</button>
+                <button class="tab-button" data-tab="favorites">Favorites</button>
+                <button class="tab-button" data-tab="statistics">Statistics</button>
+                <button class="tab-button" data-tab="quizzes">Quizzes</button>
+            </div>
+            
+            <div id="all-models" class="tab-content active">
+            <div class="section-grid">
+                <div class="section-card" onclick="loadARModel('heart')">
+                        <h3>
+                            Heart Model
+                            <button class="favorite-btn" data-model="heart" onclick="toggleFavorite(event, 'heart')">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </h3>
+                    <p>3D heart model for AR viewing</p>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-model="heart">
+                                <i class="fas fa-star rating-star" data-rating="1"></i>
+                                <i class="fas fa-star rating-star" data-rating="2"></i>
+                                <i class="fas fa-star rating-star" data-rating="3"></i>
+                                <i class="fas fa-star rating-star" data-rating="4"></i>
+                                <i class="fas fa-star rating-star" data-rating="5"></i>
+                            </div>
+                            <span class="rating-count">(0)</span>
+                        </div>
+                        <div class="model-actions">
+                            <button class="notes-btn" onclick="openNotes(event, 'heart')">
+                                <i class="far fa-sticky-note"></i> Notes
+                            </button>
+                        </div>
+                </div>
+                <div class="section-card" onclick="loadARModel('lung')">
+                        <h3>
+                            Lung Model
+                            <button class="favorite-btn" data-model="lung" onclick="toggleFavorite(event, 'lung')">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </h3>
+                    <p>3D lung model for AR viewing</p>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-model="lung">
+                                <i class="fas fa-star rating-star" data-rating="1"></i>
+                                <i class="fas fa-star rating-star" data-rating="2"></i>
+                                <i class="fas fa-star rating-star" data-rating="3"></i>
+                                <i class="fas fa-star rating-star" data-rating="4"></i>
+                                <i class="fas fa-star rating-star" data-rating="5"></i>
+                            </div>
+                            <span class="rating-count">(0)</span>
+                        </div>
+                        <div class="model-actions">
+                            <button class="notes-btn" onclick="openNotes(event, 'lung')">
+                                <i class="far fa-sticky-note"></i> Notes
+                            </button>
+                        </div>
+                </div>
+                <div class="section-card" onclick="loadARModel('brain')">
+                        <h3>
+                            Brain Model
+                            <button class="favorite-btn" data-model="brain" onclick="toggleFavorite(event, 'brain')">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </h3>
+                    <p>3D brain model for AR viewing</p>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-model="brain">
+                                <i class="fas fa-star rating-star" data-rating="1"></i>
+                                <i class="fas fa-star rating-star" data-rating="2"></i>
+                                <i class="fas fa-star rating-star" data-rating="3"></i>
+                                <i class="fas fa-star rating-star" data-rating="4"></i>
+                                <i class="fas fa-star rating-star" data-rating="5"></i>
+                            </div>
+                            <span class="rating-count">(0)</span>
+                        </div>
+                        <div class="model-actions">
+                            <button class="notes-btn" onclick="openNotes(event, 'brain')">
+                                <i class="far fa-sticky-note"></i> Notes
+                            </button>
+                        </div>
+                </div>
+                <div class="section-card" onclick="loadARModel('skeleton')">
+                        <h3>
+                            Skeleton Model
+                            <button class="favorite-btn" data-model="skeleton" onclick="toggleFavorite(event, 'skeleton')">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </h3>
+                    <p>3D skeleton model for AR viewing</p>
+                        <div class="rating-container">
+                            <div class="rating-stars" data-model="skeleton">
+                                <i class="fas fa-star rating-star" data-rating="1"></i>
+                                <i class="fas fa-star rating-star" data-rating="2"></i>
+                                <i class="fas fa-star rating-star" data-rating="3"></i>
+                                <i class="fas fa-star rating-star" data-rating="4"></i>
+                                <i class="fas fa-star rating-star" data-rating="5"></i>
+                </div>
+                            <span class="rating-count">(0)</span>
+                        </div>
+                        <div class="model-actions">
+                            <button class="notes-btn" onclick="openNotes(event, 'skeleton')">
+                                <i class="far fa-sticky-note"></i> Notes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="favorites" class="tab-content">
+                <div class="section-grid" id="favorites-grid">
+                    <!-- Favorites will be loaded here dynamically -->
+                    <div class="empty-favorites">
+                        <i class="far fa-heart"></i>
+                        <p>You haven't added any favorites yet.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="statistics" class="tab-content">
+                <div class="stats-container">
+                    <h3>Model Views Statistics</h3>
+                    <div class="stats-table-container">
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Views</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-table-body">
+                                <tr>
+                                    <td colspan="2" class="loading-stats">Loading statistics...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quiz Tab Content -->
+            <div id="quizzes" class="tab-content">
+                <div class="quiz-container">
+                    <h3>Available Quizzes</h3>
+                    <div class="quiz-list" id="quiz-list">
+                        <p class="loading-stats">Loading quizzes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="ar-viewer" style="display: none;">
+            <div id="ar-instructions">
+                <h3>📱 How to Use AR Viewer:</h3>
+                <ol>
+                    <li>Allow camera access when prompted</li>
+                    <li>Print or display the Hiro marker</li>
+                    <li>Point your camera at the marker</li>
+                    <li>Keep the marker flat and well-lit</li>
+                    <li>Wait for the 3D model to appear</li>
+                </ol>
+                <p class="warning">⚠️ Make sure to <a href="https://jeromeetienne.github.io/AR.js/data/images/HIRO.jpg" target="_blank">print</a> the Hiro marker first!</p>
+                <button onclick="hideInstructions()" class="ok-button">OK, I understand</button>
+            </div>
+
+            <div class="model-controls">
+                <button class="rotate-btn left" onclick="rotateModel('left')">⟲</button>
+                <button class="rotate-btn right" onclick="rotateModel('right')">⟳</button>
+                <button class="rotate-btn up" onclick="rotateModel('up')">⟰</button>
+                <button class="rotate-btn down" onclick="rotateModel('down')">⟱</button>
+            </div>
+
+            <div id="loading-indicator" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Loading AR model...</p>
+            </div>
+            <a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false;'>
+                <a-marker preset="hiro">
+                    <a-entity 
+                        id="model-container"
+                        position="0 0 0"
+                        rotation="0 0 0"
+                        scale="1.5 1.5 1.5">
+                    </a-entity>
+                </a-marker>
+                <a-entity camera></a-entity>
+            </a-scene>
+            <button onclick="closeARViewer()" class="close-button">Close AR Viewer</button>
+        </div>
+
+        <!-- Notes Panel -->
+        <div class="notes-panel" id="notes-panel">
+            <div class="notes-header">
+                <h3>My Notes</h3>
+                <button class="close-notes" onclick="closeNotes()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="model-name" id="notes-model-name"></div>
+            <textarea id="notes-textarea" placeholder="Write your notes about this model here..."></textarea>
+            <div class="notes-actions">
+                <button class="notes-cancel" onclick="closeNotes()">Cancel</button>
+                <button class="notes-save" onclick="saveNotes()">Save Notes</button>
+            </div>
+        </div>
+
+        <!-- Rating Modal -->
+        <div class="model-rating-modal" id="rating-modal">
+            <div class="rating-modal-content">
+                <div class="rating-modal-header">
+                    <h3>Rate this Model</h3>
+                    <button class="close-rating-modal" onclick="closeRatingModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="rating-modal-body">
+                    <div class="rating-stars-large">
+                        <i class="fas fa-star rating-star-large" data-rating="1"></i>
+                        <i class="fas fa-star rating-star-large" data-rating="2"></i>
+                        <i class="fas fa-star rating-star-large" data-rating="3"></i>
+                        <i class="fas fa-star rating-star-large" data-rating="4"></i>
+                        <i class="fas fa-star rating-star-large" data-rating="5"></i>
+                    </div>
+                    <textarea id="rating-comment" class="rating-comment" placeholder="Add a comment about your experience with this model (optional)"></textarea>
+                </div>
+                <div class="rating-actions">
+                    <button class="rating-cancel" onclick="closeRatingModal()">Cancel</button>
+                    <button class="rating-submit" onclick="submitRating()">Submit Rating</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quiz Modal -->
+        <div class="quiz-modal" id="quiz-modal">
+            <div class="quiz-modal-content">
+                <div class="quiz-modal-header">
+                    <h3 id="quiz-title">Quiz Title</h3>
+                    <button class="close-quiz-modal" onclick="closeQuizModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="quiz-modal-body">
+                    <div class="quiz-description" id="quiz-description">
+                        Quiz description will appear here.
+                    </div>
+                    <div class="quiz-progress" id="quiz-progress">
+                        Question <span id="current-question">1</span> of <span id="total-questions">10</span>
+                    </div>
+                    <div class="quiz-questions" id="quiz-questions-container">
+                        <!-- Questions will be dynamically inserted here -->
+                    </div>
+                    <div class="quiz-results" id="quiz-results" style="display: none;">
+                        <h4>Quiz Completed!</h4>
+                        <p>Your score:</p>
+                        <div class="quiz-score-big">
+                            <span id="quiz-final-score">0</span> / <span id="quiz-final-total">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="quiz-actions" id="quiz-actions">
+                    <button class="quiz-next" onclick="nextQuestion()">Next Question</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    // Debug script to ensure theme toggle is visible
+    window.addEventListener('DOMContentLoaded', function() {
+        console.log('Page loaded - checking theme toggle');
+        
+        // Force the theme toggle to be visible with inline styles
+        const themeToggle = document.querySelector('.theme-toggle');
+        if (themeToggle) {
+            themeToggle.style.display = 'flex';
+            themeToggle.style.alignItems = 'center';
+            themeToggle.style.marginLeft = '15px';
+            themeToggle.style.cursor = 'pointer';
+            themeToggle.innerHTML = '<i class="fas fa-moon" style="font-size: 24px;"></i>';
+            console.log('Theme toggle found and styled');
+        } else {
+            console.error('Theme toggle not found in the DOM');
+        }
+        
+        // Override the toggle function to add debugging
+        window.originalToggleTheme = window.toggleTheme;
+        window.toggleTheme = function() {
+            console.log('Toggle theme clicked');
+            if (window.originalToggleTheme) {
+                window.originalToggleTheme();
+            } else {
+                const body = document.body;
+                body.classList.toggle('dark-theme');
+                
+                // Update icon based on current theme
+                const themeIcon = document.querySelector('.theme-toggle i');
+                if (themeIcon) {
+                    if (body.classList.contains('dark-theme')) {
+                        themeIcon.className = 'fas fa-sun';
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        themeIcon.className = 'fas fa-moon';
+                        localStorage.setItem('theme', 'light');
+                    }
+                }
+            }
+        };
+    });
+    
+        // Check if user is logged in
+        let currentUser;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            if (!currentUser) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('welcome-message').textContent = `Welcome, ${currentUser.email}`;
+                
+                // Initialize tabs
+                initTabs();
+                
+                // Load user favorites
+                loadFavorites();
+                
+                // Update notes indicators
+                updateNotesIndicators();
+                
+                // Preload statistics
+                loadStatistics();
+                
+                // Load theme preference
+                loadThemePreference();
+                
+                // Initialize rating stars
+                initRatingStars();
+            }
+        });
+        
+        // Initialize tab functionality
+        function initTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Hide all tabs
+                    document.querySelectorAll('.tab-content').forEach(tab => {
+                        tab.classList.remove('active');
+                    });
+                    
+                    // Deactivate all buttons
+                    document.querySelectorAll('.tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Show selected tab
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    // Activate current button
+                    this.classList.add('active');
+                    
+                    // Load specific tab content if needed
+                    if (tabId === 'statistics') {
+                        loadStatistics();
+                    } else if (tabId === 'quizzes') {
+                        loadQuizzes();
+                    } else if (tabId === 'favorites') {
+                        loadFavorites();
+                    }
+                });
+            });
+        }
+        
+        // Load user favorites
+        function loadFavorites() {
+            if (!currentUser || !currentUser.id) {
+                console.error('User ID not available');
+                return;
+            }
+            
+            const userId = currentUser.id;
+            
+            // Get favorites from API
+            fetch(`api/controllers/favorites.php?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const favoritesGrid = document.getElementById('favorites-grid');
+                    
+                    // Clear current content
+                    favoritesGrid.innerHTML = '';
+                    
+                    // Check if user has favorites
+                    if (!Array.isArray(data) || data.length === 0) {
+                        favoritesGrid.innerHTML = `
+                            <div class="empty-favorites">
+                                <i class="far fa-heart"></i>
+                                <p>You haven't added any favorites yet.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Add each favorite model to the grid
+                    data.forEach(favorite => {
+                        const modelName = favorite.model_name;
+                        const displayName = modelName.charAt(0).toUpperCase() + modelName.slice(1);
+                        
+                        const card = document.createElement('div');
+                        card.className = 'section-card';
+                        card.setAttribute('onclick', `loadARModel('${modelName}')`);
+                        
+                        card.innerHTML = `
+                            <h3>
+                                ${displayName} Model
+                                <button class="favorite-btn active" data-model="${modelName}" onclick="toggleFavorite(event, '${modelName}')">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                            </h3>
+                            <p>3D ${modelName} model for AR viewing</p>
+                            <div class="rating-container">
+                                <div class="rating-stars" data-model="${modelName}">
+                                    <i class="fas fa-star rating-star" data-rating="1"></i>
+                                    <i class="fas fa-star rating-star" data-rating="2"></i>
+                                    <i class="fas fa-star rating-star" data-rating="3"></i>
+                                    <i class="fas fa-star rating-star" data-rating="4"></i>
+                                    <i class="fas fa-star rating-star" data-rating="5"></i>
+                                </div>
+                                <span class="rating-count">(0)</span>
+                            </div>
+                            <div class="model-actions">
+                                <button class="notes-btn" onclick="openNotes(event, '${modelName}')">
+                                    <i class="far fa-sticky-note"></i> Notes
+                                </button>
+                            </div>
+                        `;
+                        
+                        favoritesGrid.appendChild(card);
+                    });
+                    
+                    // Update favorite buttons in main tab
+                    updateFavoriteButtons(data);
+                })
+                .catch(error => {
+                    console.error('Error loading favorites:', error);
+                });
+        }
+        
+        // Update favorite buttons in the "All Models" tab
+        function updateFavoriteButtons(favorites = []) {
+            const favoriteButtons = document.querySelectorAll('#all-models .favorite-btn');
+            
+            // Reset all buttons
+            favoriteButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.querySelector('i').className = 'far fa-heart';
+            });
+            
+            // Mark favorites
+            if (Array.isArray(favorites)) {
+                favorites.forEach(favorite => {
+                    const btn = document.querySelector(`.favorite-btn[data-model="${favorite.model_name}"]`);
+                    if (btn) {
+                        btn.classList.add('active');
+                        btn.querySelector('i').className = 'fas fa-heart';
+                    }
+                });
+            }
+        }
+        
+        // Toggle favorite status
+        function toggleFavorite(event, modelName) {
+            event.stopPropagation(); // Prevent card click when clicking the favorite button
+            
+            if (!currentUser || !currentUser.id) {
+                alert('Please log in to add favorites');
+                return;
+            }
+            
+            const button = event.currentTarget;
+            const isFavorite = button.classList.contains('active');
+            const userId = currentUser.id;
+            
+            const requestOptions = {
+                method: isFavorite ? 'DELETE' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, model_name: modelName })
+            };
+            
+            fetch('api/controllers/favorites.php', requestOptions)
+                .then(response => response.json())
+                .then(data => {
+                    if ((isFavorite && data.message.includes('removed')) || 
+                        (!isFavorite && data.message.includes('added'))) {
+                        
+                        // Toggle button appearance
+                        button.classList.toggle('active');
+                        const icon = button.querySelector('i');
+                        icon.className = button.classList.contains('active') ? 'fas fa-heart' : 'far fa-heart';
+                        
+                        // If we're in the favorites tab and removing a favorite, refresh the list
+                        if (isFavorite && document.querySelector('.tab-button[data-tab="favorites"]').classList.contains('active')) {
+                            loadFavorites();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error toggling favorite:', error);
+                });
+        }
+        
+        // Track the current model
+        let currentModelName = '';
+
+        function hideInstructions() {
+            document.getElementById('ar-instructions').style.display = 'none';
+        }
+
+        function loadARModel(modelName) {
+            currentModelName = modelName; // Store the current model name
+            
+            const arViewer = document.getElementById('ar-viewer');
+            const modelContainer = document.getElementById('model-container');
+            const loadingIndicator = document.getElementById('loading-indicator');
+
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+
+            // Clear previous model
+            modelContainer.innerHTML = '';
+            
+            // Record view statistics
+            recordModelView(modelName);
+            
+            // Fetch model configuration from API
+            fetch(`api/controllers/get_model.php?name=${modelName}`)
+                .then(response => response.json())
+                .then(modelConfig => {
+                    console.log(`Loading model: ${modelName} using path: ${modelConfig.path}`);
+                    
+                    // Show AR viewer
+                    arViewer.style.display = 'block';
+                    
+                    // Create a-entity with the model
+                    const modelEntity = document.createElement('a-entity');
+                    modelEntity.setAttribute('gltf-model', modelConfig.path);
+                    modelEntity.setAttribute('scale', modelConfig.scale);
+                    modelEntity.setAttribute('position', modelConfig.position);
+                    modelEntity.setAttribute('rotation', modelConfig.rotation);
+                    modelEntity.setAttribute('id', `model-${modelName}`);
+                    
+                    // Add event listeners
+                    modelEntity.addEventListener('model-loaded', () => {
+                        console.log(`Model ${modelName} loaded successfully`);
+                        loadingIndicator.style.display = 'none';
+                        
+                        // Add a title to indicate which model is being viewed
+                        const titleEl = document.createElement('div');
+                        titleEl.style.position = 'fixed';
+                        titleEl.style.top = '80px';
+                        titleEl.style.left = '0';
+                        titleEl.style.width = '100%';
+                        titleEl.style.textAlign = 'center';
+                        titleEl.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                        titleEl.style.color = 'white';
+                        titleEl.style.padding = '10px';
+                        titleEl.style.zIndex = '1001';
+                        titleEl.style.fontWeight = 'bold';
+                        titleEl.innerHTML = `Viewing: ${modelName.charAt(0).toUpperCase() + modelName.slice(1)} Model`;
+                        
+                        // Remove existing title if any
+                        const existingTitle = document.getElementById('model-title');
+                        if (existingTitle) {
+                            existingTitle.remove();
+                        }
+                        
+                        titleEl.id = 'model-title';
+                        document.body.appendChild(titleEl);
+                    });
+                    
+                    modelEntity.addEventListener('model-error', (error) => {
+                        console.error(`Error loading model ${modelName}:`, error);
+                        loadingIndicator.style.display = 'none';
+                        
+                        alert(`Could not load ${modelName} model. Please try again.`);
+                    });
+                    
+                    // Add model to container
+                    modelContainer.appendChild(modelEntity);
+                })
+                .catch(error => {
+                    console.error('Error fetching model configuration:', error);
+                    loadingIndicator.style.display = 'none';
+                    alert('An error occurred while loading the model. Please try again.');
+                });
+        }
+
+        function closeARViewer() {
+            document.getElementById('ar-viewer').style.display = 'none';
+            
+            // Reset instructions visibility when closing viewer
+            document.getElementById('ar-instructions').style.display = 'block';
+            
+            // Remove the model title if it exists
+            const modelTitle = document.getElementById('model-title');
+            if (modelTitle) {
+                modelTitle.remove();
+            }
+            
+            // Clear current model reference
+            currentModelName = '';
+        }
+
+        let modelRotationY = 0;
+        let modelRotationX = 0;
+        const ROTATION_SPEED = 45; // degrees per click
+
+        function rotateModel(direction) {
+            // Get the current model based on the stored model name
+            const model = document.getElementById('model-container').querySelector('a-entity');
+            if (!model) return;
+
+            switch(direction) {
+                case 'left':
+                    modelRotationY -= ROTATION_SPEED;
+                    break;
+                case 'right':
+                    modelRotationY += ROTATION_SPEED;
+                    break;
+                case 'up':
+                    modelRotationX -= ROTATION_SPEED;
+                    break;
+                case 'down':
+                    modelRotationX += ROTATION_SPEED;
+                    break;
+            }
+
+            // Update the model's rotation
+            model.setAttribute('rotation', `${modelRotationX} ${modelRotationY} 0`);
+        }
+
+        AFRAME.registerComponent('gesture-handler', {
+            schema: {
+                enabled: { default: true },
+                rotationFactor: { default: 5 },
+                minScale: { default: 0.3 },
+                maxScale: { default: 8 },
+            },
+
+            init: function() {
+                this.handleScale = this.handleScale.bind(this);
+                this.handleRotation = this.handleRotation.bind(this);
+
+                this.isVisible = false;
+                this.initialScale = this.el.object3D.scale.clone();
+                this.scaleFactor = 1;
+
+                this.el.sceneEl.addEventListener('markerFound', (e) => {
+                    this.isVisible = true;
+                });
+
+                this.el.sceneEl.addEventListener('markerLost', (e) => {
+                    this.isVisible = false;
+                });
+            },
+
+            update: function() {
+                if (this.data.enabled) {
+                    this.el.addEventListener('mousedown', this.handleRotation);
+                    this.el.sceneEl.addEventListener('wheel', this.handleScale);
+                } else {
+                    this.el.removeEventListener('mousedown', this.handleRotation);
+                    this.el.sceneEl.removeEventListener('wheel', this.handleScale);
+                }
+            },
+
+            handleRotation: function(event) {
+                if (this.isVisible) {
+                    this.el.object3D.rotation.y += this.data.rotationFactor * 0.1;
+                }
+            },
+
+            handleScale: function(event) {
+                if (this.isVisible) {
+                    event.preventDefault();
+                    this.scaleFactor += event.deltaY * -0.001;
+                    this.scaleFactor = Math.min(Math.max(this.scaleFactor, this.data.minScale), this.data.maxScale);
+                    this.el.object3D.scale.x = this.scaleFactor * this.initialScale.x;
+                    this.el.object3D.scale.y = this.scaleFactor * this.initialScale.y;
+                    this.el.object3D.scale.z = this.scaleFactor * this.initialScale.z;
+                }
+            },
+
+            remove: function() {
+                this.el.removeEventListener('mousedown', this.handleRotation);
+                this.el.sceneEl.removeEventListener('wheel', this.handleScale);
+            }
+        });
+
+        // Notes functionality
+        let currentNoteModel = '';
+        
+        // Open notes panel for a specific model
+        function openNotes(event, modelName) {
+            event.stopPropagation(); // Prevent card click
+            
+            if (!currentUser || !currentUser.id) {
+                alert('Please log in to use notes');
+                return;
+            }
+            
+            currentNoteModel = modelName;
+            
+            // Set model name in panel
+            const displayName = modelName.charAt(0).toUpperCase() + modelName.slice(1);
+            document.getElementById('notes-model-name').textContent = displayName;
+            
+            // Clear textarea
+            document.getElementById('notes-textarea').value = '';
+            
+            // Show panel
+            document.getElementById('notes-panel').classList.add('active');
+            
+            // Load existing notes for this model
+            fetch(`api/controllers/notes.php?user_id=${currentUser.id}&model_name=${modelName}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        // Set textarea content with existing note
+                        document.getElementById('notes-textarea').value = data[0].content;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notes:', error);
+                });
+        }
+        
+        // Close notes panel
+        function closeNotes() {
+            document.getElementById('notes-panel').classList.remove('active');
+            currentNoteModel = '';
+        }
+        
+        // Save notes
+        function saveNotes() {
+            if (!currentUser || !currentUser.id || !currentNoteModel) {
+                alert('An error occurred. Please try again.');
+                return;
+            }
+            
+            const noteContent = document.getElementById('notes-textarea').value.trim();
+            
+            // If empty, just close the panel
+            if (!noteContent) {
+                closeNotes();
+                return;
+            }
+            
+            const userId = currentUser.id;
+            
+            const requestOptions = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    model_name: currentNoteModel,
+                    content: noteContent
+                })
+            };
+            
+            fetch('api/controllers/notes.php', requestOptions)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message.includes('created') || data.message.includes('updated')) {
+                        // Close panel
+                        closeNotes();
+                        
+                        // Update notes indicators
+                        updateNotesIndicators();
+                        
+                        // Show success message
+                        alert('Notes saved successfully!');
+                    } else {
+                        alert('Failed to save notes. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving notes:', error);
+                    alert('An error occurred while saving notes. Please try again.');
+                });
+        }
+        
+        // Update notes indicators for all models
+        function updateNotesIndicators() {
+            if (!currentUser || !currentUser.id) {
+                return;
+            }
+            
+            // Get all notes for user
+            fetch(`api/controllers/notes.php?user_id=${currentUser.id}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Remove all existing indicators
+                    document.querySelectorAll('.notes-indicator').forEach(indicator => {
+                        indicator.remove();
+                    });
+                    
+                    // If no notes, exit
+                    if (!Array.isArray(data)) {
+                        return;
+                    }
+                    
+                    // Add indicators for models with notes
+                    data.forEach(note => {
+                        const notesBtn = document.querySelector(`.notes-btn[onclick*="${note.model_name}"]`);
+                        if (notesBtn && !notesBtn.querySelector('.notes-indicator')) {
+                            const indicator = document.createElement('span');
+                            indicator.className = 'notes-indicator';
+                            notesBtn.appendChild(indicator);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error updating notes indicators:', error);
+                });
+        }
+
+        // Record a model view for statistics
+        function recordModelView(modelName) {
+            // Prepare the data
+            const viewData = {
+                model_name: modelName,
+                user_id: currentUser ? currentUser.id : null
+            };
+            
+            // Send to API
+            fetch('api/controllers/model_views.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(viewData)
+            })
+            .catch(error => {
+                console.error('Error recording view:', error);
+                // Silent failure - don't disrupt the user experience
+            });
+        }
+
+        // Load statistics for models
+        function loadStatistics() {
+            fetch('api/controllers/model_views.php')
+                .then(response => response.json())
+                .then(data => {
+                    const statsTableBody = document.getElementById('stats-table-body');
+                    
+                    // Clear current content
+                    statsTableBody.innerHTML = '';
+                    
+                    // Check if data is available
+                    if (!Array.isArray(data) || data.length === 0) {
+                        statsTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="2" class="loading-stats">No statistics available yet</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
+                    // Add each model statistic to the table
+                    data.forEach((stat, index) => {
+                        const modelName = stat.model_name.charAt(0).toUpperCase() + stat.model_name.slice(1);
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <div class="stats-model-name">
+                                    ${index + 1}.
+                                    <span>${modelName}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="stats-view-count">${stat.view_count}</span>
+                            </td>
+                        `;
+                        
+                        statsTableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading statistics:', error);
+                    document.getElementById('stats-table-body').innerHTML = `
+                        <tr>
+                            <td colspan="2" class="loading-stats">Error loading statistics</td>
+                        </tr>
+                    `;
+                });
+        }
+
+        // Toggle light/dark mode
+        function toggleTheme() {
+            const body = document.body;
+            body.classList.toggle('dark-theme');
+            
+            // Update icon based on current theme
+            const themeIcon = document.querySelector('.theme-toggle i');
+            if (body.classList.contains('dark-theme')) {
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        
+        // Load saved theme preference
+        function loadThemePreference() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.querySelector('.theme-toggle i').className = 'fas fa-sun';
+            }
+        }
+
+        // Rating functionality
+        let currentRatingModel = '';
+        let selectedRating = 0;
+        
+        // Initialize rating stars
+        function initRatingStars() {
+            // Set up click handlers for all rating stars in the card view
+            document.querySelectorAll('.rating-stars').forEach(container => {
+                container.addEventListener('click', function(event) {
+                    event.stopPropagation(); // Prevent card click
+                    
+                    if (event.target.classList.contains('rating-star')) {
+                        const rating = parseInt(event.target.getAttribute('data-rating'));
+                        const modelName = this.getAttribute('data-model');
+                        openRatingModal(modelName, rating);
+                    }
+                });
+            });
+            
+            // Set up click handlers for large stars in the modal
+            document.querySelectorAll('.rating-star-large').forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    updateModalStars(rating);
+                });
+                
+                star.addEventListener('mouseover', function() {
+                    const rating = parseInt(this.getAttribute('data-rating'));
+                    highlightModalStars(rating);
+                });
+                
+                star.addEventListener('mouseout', function() {
+                    resetModalStarsHighlight();
+                });
+            });
+            
+            // Load all model ratings
+            loadAllModelRatings();
+        }
+        
+        // Load ratings for all models
+        function loadAllModelRatings() {
+            fetch('api/controllers/ratings.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        // Update each model's rating display
+                        data.forEach(ratingData => {
+                            updateModelRatingDisplay(
+                                ratingData.model_name, 
+                                ratingData.average_rating,
+                                ratingData.rating_count
+                            );
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading ratings:', error);
+                });
+                
+            // If user is logged in, check their individual ratings
+            if (currentUser && currentUser.id) {
+                document.querySelectorAll('.rating-stars').forEach(container => {
+                    const modelName = container.getAttribute('data-model');
+                    loadUserRating(currentUser.id, modelName);
+                });
+            }
+        }
+        
+        // Load user's rating for a specific model
+        function loadUserRating(userId, modelName) {
+            fetch(`api/controllers/ratings.php?user_id=${userId}&model_name=${modelName}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        const userRating = data[0].rating;
+                        highlightRatingStars(modelName, userRating);
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error loading user rating for ${modelName}:`, error);
+                });
+        }
+        
+        // Update the display of a model's rating
+        function updateModelRatingDisplay(modelName, averageRating, ratingCount) {
+            const container = document.querySelector(`.rating-stars[data-model="${modelName}"]`);
+            if (container) {
+                const countElement = container.nextElementSibling;
+                countElement.textContent = `(${ratingCount})`;
+                
+                // Highlight stars based on average rating
+                const stars = container.querySelectorAll('.rating-star');
+                stars.forEach(star => {
+                    const starRating = parseInt(star.getAttribute('data-rating'));
+                    if (starRating <= averageRating) {
+                        star.classList.add('active');
+                    } else if (starRating - 1 < averageRating) {
+                        // Partial star (if needed, could use half-star icons here)
+                        star.classList.add('half-active');
+                    } else {
+                        star.classList.remove('active', 'half-active');
+                    }
+                });
+            }
+        }
+        
+        // Highlight rating stars for a model based on user's rating
+        function highlightRatingStars(modelName, rating) {
+            const container = document.querySelector(`.rating-stars[data-model="${modelName}"]`);
+            if (container) {
+                const stars = container.querySelectorAll('.rating-star');
+                stars.forEach(star => {
+                    const starRating = parseInt(star.getAttribute('data-rating'));
+                    star.classList.toggle('active', starRating <= rating);
+                });
+            }
+        }
+        
+        // Open rating modal
+        function openRatingModal(modelName, preselectedRating = 0) {
+            if (!currentUser || !currentUser.id) {
+                alert('Please log in to rate models');
+                return;
+            }
+            
+            currentRatingModel = modelName;
+            
+            // Clear previous rating and comment
+            document.getElementById('rating-comment').value = '';
+            updateModalStars(preselectedRating);
+            
+            // Check if user has a previous rating
+            fetch(`api/controllers/ratings.php?user_id=${currentUser.id}&model_name=${modelName}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        const userRating = data[0];
+                        
+                        // Set the selected rating
+                        updateModalStars(userRating.rating);
+                        
+                        // Set the comment if exists
+                        if (userRating.comment) {
+                            document.getElementById('rating-comment').value = userRating.comment;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading user rating:', error);
+                });
+                
+            // Show the modal
+            document.getElementById('rating-modal').classList.add('active');
+        }
+        
+        // Close rating modal
+        function closeRatingModal() {
+            document.getElementById('rating-modal').classList.remove('active');
+            currentRatingModel = '';
+            selectedRating = 0;
+        }
+        
+        // Update the stars in the modal
+        function updateModalStars(rating) {
+            selectedRating = rating;
+            
+            const stars = document.querySelectorAll('.rating-star-large');
+            stars.forEach(star => {
+                const starRating = parseInt(star.getAttribute('data-rating'));
+                star.classList.toggle('active', starRating <= rating);
+            });
+        }
+        
+        // Highlight stars on hover
+        function highlightModalStars(rating) {
+            const stars = document.querySelectorAll('.rating-star-large');
+            stars.forEach(star => {
+                const starRating = parseInt(star.getAttribute('data-rating'));
+                if (starRating <= rating) {
+                    star.style.color = '#f6ad55';
+                } else {
+                    star.style.color = '';
+                }
+            });
+        }
+        
+        // Reset star highlighting
+        function resetModalStarsHighlight() {
+            const stars = document.querySelectorAll('.rating-star-large');
+            stars.forEach(star => {
+                star.style.color = '';
+                const starRating = parseInt(star.getAttribute('data-rating'));
+                star.classList.toggle('active', starRating <= selectedRating);
+            });
+        }
+        
+        // Submit rating
+        function submitRating() {
+            if (!currentUser || !currentUser.id || !currentRatingModel || selectedRating === 0) {
+                alert('Please select a rating');
+                return;
+            }
+            
+            const comment = document.getElementById('rating-comment').value.trim();
+            
+            // Prepare the data
+            const ratingData = {
+                user_id: currentUser.id,
+                model_name: currentRatingModel,
+                rating: selectedRating,
+                comment: comment
+            };
+            
+            // Send rating to API
+            fetch('api/controllers/ratings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ratingData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeRatingModal();
+                
+                // Update the UI to reflect the new rating
+                highlightRatingStars(currentRatingModel, selectedRating);
+                
+                // Reload all ratings to get the updated average
+                loadAllModelRatings();
+                
+                // Show success message
+                alert('Rating submitted successfully!');
+            })
+            .catch(error => {
+                console.error('Error submitting rating:', error);
+                alert('Failed to submit rating. Please try again.');
+            });
+        }
+
+        // Load quiz tab content
+        function loadQuizzes() {
+            const userId = currentUser ? currentUser.id : null;
+            let url = 'api/controllers/quizzes.php';
+            
+            if(userId) {
+                url += `?user_id=${userId}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const quizListElement = document.getElementById('quiz-list');
+                    
+                    // Clear current content
+                    quizListElement.innerHTML = '';
+                    
+                    if (!Array.isArray(data) || data.length === 0) {
+                        quizListElement.innerHTML = `<p class="loading-stats">No quizzes available yet</p>`;
+                        return;
+                    }
+                    
+                    // Add each quiz to the list
+                    data.forEach(quiz => {
+                        const card = document.createElement('div');
+                        card.className = 'quiz-card';
+                        card.onclick = function() { startQuiz(quiz.id); };
+                        
+                        let scoreHtml = '';
+                        if (quiz.user_score) {
+                            const scorePercent = Math.round((quiz.user_score.score / quiz.user_score.total_questions) * 100);
+                            scoreHtml = `<span class="quiz-score">${scorePercent}% (${quiz.user_score.score}/${quiz.user_score.total_questions})</span>`;
+                        }
+                        
+                        card.innerHTML = `
+                            <h3>${quiz.title}</h3>
+                            <p>${quiz.description}</p>
+                            <div class="quiz-meta">
+                                <span>${quiz.question_count} questions</span>
+                                ${scoreHtml}
+                            </div>
+                        `;
+                        
+                        quizListElement.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading quizzes:', error);
+                    document.getElementById('quiz-list').innerHTML = `
+                        <p class="loading-stats">Error loading quizzes</p>
+                    `;
+                });
+        }
+        
+        // Quiz variables
+        let currentQuiz = null;
+        let quizQuestions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let quizScore = 0;
+        let quizInReviewMode = false;
+        
+        // Start a quiz
+        function startQuiz(quizId) {
+            if (!currentUser || !currentUser.id) {
+                alert('Please log in to take quizzes');
+                return;
+            }
+            
+            // Reset quiz state
+            currentQuiz = null;
+            quizQuestions = [];
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            quizScore = 0;
+            quizInReviewMode = false;
+            
+            // Fetch quiz data
+            fetch(`api/controllers/quizzes.php?quiz_id=${quizId}&user_id=${currentUser.id}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Store quiz data
+                    currentQuiz = data;
+                    quizQuestions = data.questions;
+                    
+                    // Set quiz title and description
+                    document.getElementById('quiz-title').textContent = data.title;
+                    document.getElementById('quiz-description').textContent = data.description;
+                    
+                    // Update progress
+                    document.getElementById('current-question').textContent = '1';
+                    document.getElementById('total-questions').textContent = quizQuestions.length;
+                    
+                    // Show first question
+                    showQuestion(0);
+                    
+                    // Reset and show quiz results div
+                    document.getElementById('quiz-results').style.display = 'none';
+                    
+                    // Update action buttons
+                    updateQuizActions();
+                    
+                    // Show modal
+                    document.getElementById('quiz-modal').classList.add('active');
+                })
+                .catch(error => {
+                    console.error('Error loading quiz:', error);
+                    alert('Error loading quiz. Please try again.');
+                });
+        }
+        
+        // Show a specific question
+        function showQuestion(index) {
+            if (!quizQuestions || index >= quizQuestions.length) {
+                return;
+            }
+            
+            const question = quizQuestions[index];
+            const container = document.getElementById('quiz-questions-container');
+            
+            // Create question HTML
+            let questionHtml = `
+                <div class="quiz-question" data-question-id="${question.id}">
+                    <h4>${question.question}</h4>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-option="a" onclick="selectOption(${index}, 'a')">
+                            <span>A</span>
+                            <span class="quiz-option-label">${question.options.a}</span>
+                        </div>
+                        <div class="quiz-option" data-option="b" onclick="selectOption(${index}, 'b')">
+                            <span>B</span>
+                            <span class="quiz-option-label">${question.options.b}</span>
+                        </div>
+                        <div class="quiz-option" data-option="c" onclick="selectOption(${index}, 'c')">
+                            <span>C</span>
+                            <span class="quiz-option-label">${question.options.c}</span>
+                        </div>
+                        <div class="quiz-option" data-option="d" onclick="selectOption(${index}, 'd')">
+                            <span>D</span>
+                            <span class="quiz-option-label">${question.options.d}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = questionHtml;
+            
+            // If in review mode or answer exists, show selection
+            if (quizInReviewMode || userAnswers[question.id]) {
+                const selectedOption = userAnswers[question.id];
+                if (selectedOption) {
+                    const optionElement = container.querySelector(`.quiz-option[data-option="${selectedOption}"]`);
+                    optionElement.classList.add('selected');
+                }
+            }
+            
+            // Update progress indicator
+            document.getElementById('current-question').textContent = index + 1;
+            
+            // Update action buttons
+            updateQuizActions();
+        }
+        
+        // Select an answer option
+        function selectOption(questionIndex, option) {
+            // If in review mode, don't allow changes
+            if (quizInReviewMode) {
+                return;
+            }
+            
+            const question = quizQuestions[questionIndex];
+            const questionId = question.id;
+            
+            // Store the answer
+            userAnswers[questionId] = option;
+            
+            // Update UI to show selection
+            const container = document.getElementById('quiz-questions-container');
+            const options = container.querySelectorAll('.quiz-option');
+            
+            options.forEach(optionElement => {
+                optionElement.classList.remove('selected');
+                if (optionElement.getAttribute('data-option') === option) {
+                    optionElement.classList.add('selected');
+                }
+            });
+            
+            // Update action buttons
+            updateQuizActions();
+        }
+        
+        // Move to next question
+        function nextQuestion() {
+            if (currentQuestionIndex < quizQuestions.length - 1) {
+                currentQuestionIndex++;
+                showQuestion(currentQuestionIndex);
+            } else {
+                // If on last question, submit quiz
+                submitQuiz();
+            }
+        }
+        
+        // Move to previous question
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                showQuestion(currentQuestionIndex);
+            }
+        }
+        
+        // Update quiz action buttons based on current state
+        function updateQuizActions() {
+            const actionsContainer = document.getElementById('quiz-actions');
+            
+            if (quizInReviewMode) {
+                // In review mode, show restart button
+                actionsContainer.innerHTML = `
+                    <button class="quiz-restart" onclick="closeQuizModal()">Close</button>
+                `;
+                return;
+            }
+            
+            // Check if current question has been answered
+            const currentQuestion = quizQuestions[currentQuestionIndex];
+            const currentQuestionId = currentQuestion ? currentQuestion.id : null;
+            const hasAnswer = currentQuestionId && userAnswers[currentQuestionId];
+            
+            // Create navigation buttons
+            let buttonsHtml = '';
+            
+            if (currentQuestionIndex > 0) {
+                buttonsHtml += `<button class="quiz-restart" onclick="prevQuestion()">Previous</button>`;
+            }
+            
+            if (currentQuestionIndex < quizQuestions.length - 1) {
+                buttonsHtml += `<button class="quiz-next" onclick="nextQuestion()" ${!hasAnswer ? 'disabled' : ''}>Next Question</button>`;
+            } else {
+                // On last question
+                buttonsHtml += `<button class="quiz-submit" onclick="submitQuiz()" ${!hasAnswer ? 'disabled' : ''}>Submit Quiz</button>`;
+            }
+            
+            actionsContainer.innerHTML = buttonsHtml;
+        }
+        
+        // Submit the quiz
+        function submitQuiz() {
+            // Calculate score
+            quizScore = 0;
+            const totalQuestions = quizQuestions.length;
+            
+            // Check how many questions were answered
+            const answeredQuestions = Object.keys(userAnswers).length;
+            
+            if (answeredQuestions < totalQuestions) {
+                const unanswered = totalQuestions - answeredQuestions;
+                if (!confirm(`You have ${unanswered} unanswered question(s). Submit anyway?`)) {
+                    return;
+                }
+            }
+            
+            // Submit to API
+            const quizData = {
+                user_id: currentUser.id,
+                quiz_id: currentQuiz.quiz_id,
+                answers: userAnswers,
+                score: quizScore // Will be calculated on server
+            };
+            
+            fetch('api/controllers/quizzes.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(quizData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Get correct answers and score
+                quizScore = data.score;
+                const correctAnswers = data.correct_answers;
+                
+                // Show results
+                document.getElementById('quiz-final-score').textContent = quizScore;
+                document.getElementById('quiz-final-total').textContent = totalQuestions;
+                document.getElementById('quiz-results').style.display = 'block';
+                
+                // Hide questions temporarily
+                document.getElementById('quiz-questions-container').style.display = 'none';
+                document.getElementById('quiz-progress').style.display = 'none';
+                
+                // Update action buttons for review mode
+                quizInReviewMode = true;
+                updateQuizActions();
+                
+                // Reload quizzes to update scores
+                loadQuizzes();
+            })
+            .catch(error => {
+                console.error('Error submitting quiz:', error);
+                alert('Error submitting quiz. Please try again.');
+            });
+        }
+        
+        // Close quiz modal
+        function closeQuizModal() {
+            document.getElementById('quiz-modal').classList.remove('active');
+            
+            // Reset quiz state
+            currentQuiz = null;
+            quizQuestions = [];
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            quizScore = 0;
+            quizInReviewMode = false;
+            
+            // Reset UI
+            document.getElementById('quiz-questions-container').style.display = 'block';
+            document.getElementById('quiz-progress').style.display = 'block';
+            document.getElementById('quiz-results').style.display = 'none';
+        }
+    </script>
+</body>
+</html> 
